@@ -16,7 +16,7 @@ pushed. Decisions are in DECISIONS.md.
 | 7 | `make monitor` reports >=1 OK, EXPECTED, ALERT; exit 1 | **PASS** | `4 OK, 1 EXPECTED, 2 ALERT`; process exit 1 |
 | 8 | `make demo-auto` runs all acts, leaves tree clean | **PASS** | All 5 acts ran, `DEMO_EXIT=0`, `git status --porcelain` empty afterwards |
 | 9 | `make test` passes | **PASS** | `17 passed` (8 monitor + 9 gate tests incl. real `dbt parse` integration and the payments-lockdown regression) |
-| 10 | Workflow file valid YAML, would run the gate | **PENDING - corrected** | Was marked PASS but the check had never actually run on a PR. `yaml.safe_load` ok; job `lineage-gate` (required check name) runs `uv sync` -> `dbt parse` -> gate `--skip-parse`; second job `dbt-build` runs `dbt build`. Real result on PR #1 recorded below once CI has run |
+| 10 | Workflow runs the gate on a real PR | **PASS** | Corrected: previously marked PASS but never executed. `gh pr checks 1 --watch` on PR #1 (`demo/scope-drift`): `lineage-gate` **FAIL** (exit 1, `NOT_LOCKED` + `NO_INTEGRITY_CHECK` for `seed.lineage_gate.ml_features` in lineage of `cogs_je`), `dbt-build` **PASS**. Actions was already enabled; first run fired on the original branch push, re-run confirmed on the rebased head |
 | 11 | README maps every component to the control | **PASS** | "Components -> controls" table covers trust boundary, computed scope, fail closed at merge, least privilege from one config, integrity checks, tamper detection; plus "What the full-scale version adds" section |
 | 12 | No real company names | **PASS** | grep for major grocers/retailers across repo: no matches; fictional domain throughout |
 
