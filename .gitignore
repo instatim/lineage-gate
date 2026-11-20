@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+warehouse/target/
+controls/out/
+.DS_Store
+warehouse/.user.yml
+warehouse/logs/

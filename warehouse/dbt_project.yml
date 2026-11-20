@@ -1,0 +1,18 @@
+name: lineage_gate
+version: 1.0.0
+config-version: 2
+
+profile: lineage_gate
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+models:
+  lineage_gate:
+    +materialized: view
+
+seeds:
+  lineage_gate:
+    +quote_columns: false

@@ -1,0 +1,84 @@
+# Warehouse tables are modeled as seeds. `meta.trusted` mirrors the trust of the
+# upstream system documented in models/../sources.yml: the lineage gate stops
+# its backward walk at trusted nodes and treats everything else as in scope.
+version: 2
+
+seeds:
+  - name: orders_replica
+    description: Replica of orders_db via CDC. Upstream is change-controlled.
+    config:
+      meta:
+        trusted: true
+        basis: cdc_change_controlled
+        upstream: orders_db
+    columns:
+      - name: order_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: payments
+    description: Payments provider export. Upstream covered by provider assurance.
+    config:
+      meta:
+        trusted: true
+        basis: provider_assurance
+        upstream: payments_provider
+    columns:
+      - name: payment_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: order_items
+    description: Order line items replicated from orders_db.
+    config:
+      meta:
+        trusted: true
+        basis: cdc_change_controlled
+        upstream: orders_db
+    columns:
+      - name: order_item_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  # Untrusted upstreams stay in lineage scope: their warehouse copies must be
+  # locked down (controls/lockdown.yml) and carry integrity checks.
+  - name: retailer_feed
+    description: Retailer SFTP feed (partner_feed). Not trusted; locked in warehouse.
+    config:
+      meta:
+        trusted: false
+        upstream: partner_feed
+    columns:
+      - name: sku
+        data_tests: [not_null]
+    data_tests:
+      - row_count_not_empty
+
+  - name: events_raw
+    description: Raw application events (event_logs). Not trusted; locked in warehouse.
+    config:
+      meta:
+        trusted: false
+        upstream: event_logs
+    columns:
+      - name: event_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: experiments
+    description: Internal experiment registry.
+    columns:
+      - name: experiment_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  # ml_features is intentionally NOT locked down and has NO integrity checks on
+  # main. The demo patches it into the COGS lineage to show the gate failing,
+  # then fixing it. Do not "helpfully" add tests here.
+  - name: ml_features
+    description: ML scoring features. Currently outside lineage scope and unlocked.

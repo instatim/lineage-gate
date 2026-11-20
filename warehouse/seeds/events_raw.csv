@@ -1,0 +1,4 @@
+event_id,order_id,event_type,event_ts
+EV-4001,O-1001,purchase,2026-01-05 09:12:05
+EV-4002,O-1003,refund,2026-01-08 14:00:00
+EV-4003,O-1004,purchase,2026-01-07 08:30:10

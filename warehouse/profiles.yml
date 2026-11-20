@@ -1,0 +1,9 @@
+# Local-only DuckDB file. No credentials, no network.
+lineage_gate:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Resolved relative to the directory dbt is invoked from; the Makefile
+      # and scripts always run dbt from the repo root.
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'warehouse/target/lineage_gate.duckdb') }}"

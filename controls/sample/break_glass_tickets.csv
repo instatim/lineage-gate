@@ -1,0 +1,3 @@
+ticket,identity,table,opened,closed,approver,script_reviewed
+BG-1001,breakglass_bot,retailer_feed,2026-11-10 09:00:00,2026-11-10 10:00:00,d.reyes,yes
+BG-1002,breakglass_bot,payments,2026-11-10 11:00:00,,d.reyes,no

@@ -1,0 +1,38 @@
+# Documentation of the four upstream systems and their trust posture.
+# These sources are not referenced by any model: in this miniature the
+# warehouse-side copies are seeds (see seeds/schema.yml), and meta.trusted on
+# those seeds mirrors the trust declared here. In the full-scale version these
+# would be real dbt sources and the walk would stop on them directly.
+version: 2
+
+sources:
+  - name: orders_db
+    description: Postgres replica via CDC. Trusted - upstream is change-controlled.
+    meta:
+      trusted: true
+      basis: cdc_change_controlled
+    tables:
+      - name: orders
+      - name: order_items
+
+  - name: payments_provider
+    description: Third-party payment processor export. Trusted - provider assurance.
+    meta:
+      trusted: true
+      basis: provider_assurance
+    tables:
+      - name: payments
+
+  - name: partner_feed
+    description: Retailer SFTP feed. Not trusted - must be locked in our warehouse.
+    meta:
+      trusted: false
+    tables:
+      - name: retailer_export
+
+  - name: event_logs
+    description: Raw application events. Not trusted - must be locked in our warehouse.
+    meta:
+      trusted: false
+    tables:
+      - name: raw_events

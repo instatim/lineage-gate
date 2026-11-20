@@ -1,0 +1,37 @@
+# Lockdown config - the single source of truth for which tables are locked.
+#
+# Every control that needs the locked-table list reads this file:
+#   - controls/lineage_gate.py      (enforcement at merge time)
+#   - controls/write_monitor.py     (tamper detection on the query log)
+#   - human_access_review, machine_user_review, break_glass_monitor (named in
+#     consumed_by; out of scope for this miniature)
+
+# Warehouse relations under mandatory access lockdown. The lineage gate
+# requires every node in a key report's computed scope to appear here.
+locked_tables:
+  # Trusted-upstream base tables. Listed anyway: lockdown is the default;
+  # meta.trusted only decides where the lineage walk stops.
+  - orders_replica      # upstream: orders_db (CDC, change-controlled)
+  - payments            # upstream: payments_provider (provider assurance)
+  - order_items         # upstream: orders_db (CDC, change-controlled)
+  # Untrusted upstreams - these MUST be locked in our warehouse.
+  - retailer_feed       # upstream: partner_feed (SFTP)
+  - events_raw          # upstream: event_logs (raw app events)
+  - experiments         # internal, in growth lineage
+  # Marts and staging models in lineage scope.
+  - order_fees
+  - item_cost
+  - refunds_adj
+  - growth_metrics
+  - gross_revenue
+  - cogs
+  - adjustments
+  - growth_kpis
+  # NOTE: ml_features is deliberately absent. The demo shows the gate failing
+  # when untrusted lineage reaches an unlocked, untested table.
+
+# Controls that consume this list (the lineage gate enforces it; these review it).
+consumed_by:
+  - human_access_review
+  - machine_user_review
+  - break_glass_monitor

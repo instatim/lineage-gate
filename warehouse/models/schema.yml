@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: order_fees
+    description: Order fees computed from the orders replica and payments.
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+    data_tests:
+      - row_count_not_empty
+
+  - name: item_cost
+    description: Landed item cost from order items and the retailer feed.
+    columns:
+      - name: order_item_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: refunds_adj
+    description: Refund and event-driven adjustments to revenue.
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+    data_tests:
+      - row_count_not_empty
+
+  - name: growth_metrics
+    description: Growth experiment metrics. Outside key-report scope.
+    columns:
+      - name: metric_source
+        data_tests: [not_null]
+    data_tests:
+      - row_count_not_empty
+
+  - name: gross_revenue
+    description: Gross revenue per order. Feeds revenue_je.
+    columns:
+      - name: order_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: cogs
+    description: Cost of goods sold per order. Feeds cogs_je.
+    columns:
+      - name: order_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: adjustments
+    description: Refund adjustments per order. Feeds adjustments_je.
+    columns:
+      - name: order_id
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty
+
+  - name: growth_kpis
+    description: Growth KPIs for the growth dashboard. Not a key report.
+    columns:
+      - name: metric_source
+        data_tests: [not_null, unique]
+    data_tests:
+      - row_count_not_empty

@@ -1,0 +1,10 @@
+ts,identity,identity_type,table,statement,ticket
+2026-11-10 08:00:01,dbt_build,system,orders_replica,insert into orders_replica (order_id, gross_amount) values ('O-9001', 10.00),
+2026-11-10 08:05:12,nightly_etl,system,payments,update payments set amount = amount where payment_id = 'P-2001',
+2026-11-10 09:15:44,breakglass_bot,break_glass,retailer_feed,merge into retailer_feed using stage_feed on retailer_feed.sku = stage_feed.sku when matched then update set retailer_cost = stage_feed.retailer_cost,BG-1001
+2026-11-10 09:20:03,intern_mlo,human,payments,delete from payments where payment_id = 'P-2004',
+2026-11-10 10:00:00,dbt_build,system,item_cost,insert into item_cost (order_item_id, extended_cost) values ('OI-3005', 12.50),
+2026-11-10 10:30:00,analytics_ro,human,gross_revenue,select order_id, sum(gross_revenue) from gross_revenue group by 1,
+2026-11-10 11:30:22,breakglass_bot,break_glass,payments,update payments set amount = 0.01 where payment_id = 'P-2002',BG-1002
+2026-11-10 12:05:10,svc_marketing,system,experiments,update experiments set name = 'free_delivery_test_v2' where experiment_id = 'EXP-1',
+2026-11-10 13:00:00,dbt_build,system,growth_dashboard_notes,insert into growth_dashboard_notes (note) values ('weekly summary'),

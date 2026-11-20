@@ -1,0 +1,5 @@
+order_id,customer_id,order_ts,status,gross_amount
+O-1001,C-101,2026-01-05 09:12:00,delivered,42.50
+O-1002,C-102,2026-01-05 09:40:00,delivered,18.75
+O-1003,C-103,2026-01-06 11:05:00,refunded,64.00
+O-1004,C-101,2026-01-07 08:30:00,delivered,27.25

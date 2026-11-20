@@ -1,0 +1,5 @@
+order_item_id,order_id,sku,qty,unit_price
+OI-3001,O-1001,SKU-APP-1,2,4.99
+OI-3002,O-1002,SKU-DAIRY-2,1,3.25
+OI-3003,O-1003,SKU-FRZN-3,4,12.00
+OI-3004,O-1004,SKU-PROD-1,1,8.50

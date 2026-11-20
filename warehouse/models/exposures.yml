@@ -1,0 +1,45 @@
+version: 2
+
+# Only exposures flagged meta.key_report pull their lineage into gate scope.
+exposures:
+  - name: revenue_je
+    type: analysis
+    description: Revenue journal entry feed. Key report.
+    depends_on:
+      - ref('gross_revenue')
+    owner:
+      name: Data Platform
+      email: data-platform@example.com
+    meta:
+      key_report: true
+
+  - name: cogs_je
+    type: analysis
+    description: COGS journal entry feed. Key report.
+    depends_on:
+      - ref('cogs')
+    owner:
+      name: Data Platform
+      email: data-platform@example.com
+    meta:
+      key_report: true
+
+  - name: adjustments_je
+    type: analysis
+    description: Adjustments journal entry feed. Key report.
+    depends_on:
+      - ref('adjustments')
+    owner:
+      name: Data Platform
+      email: data-platform@example.com
+    meta:
+      key_report: true
+
+  - name: growth_dashboard
+    type: dashboard
+    description: Growth dashboard. NOT a key report - its lineage stays out of scope.
+    depends_on:
+      - ref('growth_kpis')
+    owner:
+      name: Growth Team
+      email: growth@example.com
