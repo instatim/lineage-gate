@@ -1,0 +1,31 @@
+diff --git a/controls/lockdown.yml b/controls/lockdown.yml
+index 70de62b..a982c11 100644
+--- a/controls/lockdown.yml
++++ b/controls/lockdown.yml
+@@ -18,6 +18,7 @@ locked_tables:
+   - retailer_feed       # upstream: partner_feed (SFTP)
+   - events_raw          # upstream: event_logs (raw app events)
+   - experiments         # internal, in growth lineage
++  - ml_features         # ML scoring features; pulled into COGS lineage
+   # Marts and staging models in lineage scope.
+   - order_fees
+   - item_cost
+diff --git a/warehouse/seeds/schema.yml b/warehouse/seeds/schema.yml
+index a934e21..0173381 100644
+--- a/warehouse/seeds/schema.yml
++++ b/warehouse/seeds/schema.yml
+@@ -77,8 +77,10 @@ seeds:
+     data_tests:
+       - row_count_not_empty
+ 
+-  # ml_features is intentionally NOT locked down and has NO integrity checks on
+-  # main. The demo patches it into the COGS lineage to show the gate failing,
+-  # then fixing it. Do not "helpfully" add tests here.
+   - name: ml_features
+-    description: ML scoring features. Currently outside lineage scope and unlocked.
++    description: ML scoring features. Locked down and integrity-checked.
++    columns:
++      - name: order_id
++        data_tests: [not_null]
++    data_tests:
++      - row_count_not_empty
