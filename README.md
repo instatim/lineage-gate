@@ -18,14 +18,15 @@ graph LR
         cogs_je --> cogs --> item_cost
         adjustments_je --> adjustments --> refunds_adj
     end
-    subgraph scope["Computed scope (must be locked + tested)"]
+    subgraph scope["Computed scope - warehouse copies (must be locked + tested)"]
         order_fees --> orders_replica
         order_fees --> payments
         item_cost --> order_items
         item_cost --> retailer_feed
         refunds_adj --> events_raw
+        refunds_adj --> orders_replica
     end
-    subgraph boundary["Trusted boundary (walk stops here)"]
+    subgraph boundary["Trusted upstream (walk stops here)"]
         orders_replica -.->|trusted: cdc_change_controlled| orders_db[(orders_db)]
         payments -.->|trusted: provider_assurance| payments_provider[(payments_provider)]
         order_items -.->|trusted: cdc_change_controlled| orders_db
@@ -34,6 +35,14 @@ graph LR
     event_logs[(event_logs)] -.-> events_raw
     growth_dashboard --> growth_kpis --> growth_metrics --> experiments & ml_features
 ```
+
+Trust belongs to the **upstream system** (`orders_db` via CDC,
+`payments_provider` via provider assurance) - but the warehouse copy is ours
+to defend. Trusted nodes are the boundary where the walk stops, yet they stay
+in scope: `orders_replica`, `payments` and `order_items` must be locked down
+and carry integrity checks like every other in-scope node. The gate reports
+the boundary as the upstream, e.g. `trusted boundary: orders_db (via
+orders_replica)`.
 
 `growth_dashboard` has no `key_report` flag, so its lineage
 (`experiments`, `ml_features`) never enters scope. `ml_features` starts
@@ -59,7 +68,7 @@ make test        # pytest
 
 | Component | File | Control it represents |
 |---|---|---|
-| dbt sources + `meta.trusted` | `warehouse/models/sources.yml`, `warehouse/seeds/schema.yml` | **Trust boundary** - which upstreams are trusted and why |
+| dbt sources + `meta.trusted` / `meta.upstream` | `warehouse/models/sources.yml`, `warehouse/seeds/schema.yml` | **Trust boundary** - which upstreams are trusted and why; warehouse copies stay in scope |
 | `parent_map` walk from key-report exposures | `controls/lineage_gate.py` | **Computed scope** - lineage decides what must be governed |
 | Required check `lineage-gate` on `pull_request` | `.github/workflows/lineage-gate.yml` | **Fail closed at merge** - drift can't ship |
 | `controls/lockdown.yml` + `consumed_by` | `controls/lockdown.yml` | **Least privilege from one config** - every control reads the same list |

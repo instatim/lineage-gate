@@ -1,6 +1,7 @@
 # Warehouse tables are modeled as seeds. `meta.trusted` mirrors the trust of the
 # upstream system documented in models/../sources.yml: the lineage gate stops
-# its backward walk at trusted nodes and treats everything else as in scope.
+# its backward walk at trusted nodes, but the warehouse copies stay in scope -
+# trust belongs to the upstream, so our copy must still be locked and tested.
 version: 2
 
 seeds:

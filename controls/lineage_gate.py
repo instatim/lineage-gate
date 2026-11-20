@@ -1,9 +1,12 @@
 """Lineage gate: compute the scope of every key report and fail closed.
 
 Walks dbt manifest lineage backward from exposures flagged meta.key_report,
-stops at nodes marked meta.trusted, and requires every other node on the path
-to be (a) listed in controls/lockdown.yml and (b) covered by at least one data
-test. Untrusted sources on the path stay in scope.
+stops at nodes marked meta.trusted, and requires every node on the path -
+trusted boundary nodes included - to be (a) listed in controls/lockdown.yml
+and (b) covered by at least one data test. Trust belongs to the upstream
+system (meta.upstream); the warehouse copy is ours to defend, so it stays in
+scope even though the walk does not continue past it. Untrusted sources on
+the path stay in scope too.
 
 Usage:
     python controls/lineage_gate.py [--skip-parse] [--manifest PATH]
@@ -37,6 +40,13 @@ def _display_name(node_id, node):
     if node.get("resource_type") == "source" or "source_name" in node:
         return f"{node.get('source_name')}.{node.get('name', node_id)}"
     return node.get("name") or node_id
+
+
+def _boundary_label(node_id, node):
+    """Trusted boundary is the upstream system, reached via this warehouse node."""
+    name = _display_name(node_id, node)
+    upstream = _meta_of(node).get("upstream")
+    return f"{upstream} (via {name})" if upstream else name
 
 
 def _lock_keys(node_id, node):
@@ -78,8 +88,12 @@ def compute_scope(manifest):
             if node is None or node.get("resource_type") not in BOUNDARY_NODE_TYPES | {"exposure"}:
                 continue
             if _is_trusted(node):
+                # Trust belongs to the upstream system; the warehouse copy is
+                # still ours to lock and test, so it stays in scope. The walk
+                # stops here - we do not walk past the boundary.
+                in_scope.add(node_id)
                 boundary.add(node_id)
-                continue  # trust boundary: do not walk past it, do not scope it
+                continue
             if node.get("resource_type") == "exposure":
                 stack.extend(parent_map.get(node_id, []))
                 continue
@@ -147,7 +161,7 @@ def main(argv=None):
     payload = {
         report: {
             "in_scope": sorted(_display_name(n, _lookup(manifest, n)) for n in v["in_scope"]),
-            "trusted_boundary": sorted(_display_name(n, _lookup(manifest, n)) for n in v["trusted_boundary"]),
+            "trusted_boundary": sorted(_boundary_label(n, _lookup(manifest, n)) for n in v["trusted_boundary"]),
         }
         for report, v in sorted(scope.items())
     }

@@ -74,3 +74,24 @@ allows.
   at `warehouse/target/lineage_gate.duckdb` (gitignored).
 - No `dbt deps` step in CI: the project has no package dependencies
   (`dbt_utils` deliberately avoided, see D3).
+
+## D8. Bug fix: trusted nodes are in scope (trust-boundary fix)
+
+**Bug found after the initial build.** `compute_scope()` treated
+`meta.trusted` nodes as pure boundary: it recorded them in
+`trusted_boundary` and excluded them from `in_scope`, so they were never
+checked against `lockdown.yml` or test coverage. Proof: deleting `payments`
+from `controls/lockdown.yml` still produced `PASS`. That left
+`orders_replica`, `payments` and `order_items` - the warehouse copies of the
+trusted upstreams - completely undefended.
+
+**Fix.** Trust belongs to the upstream system (`meta.upstream`: `orders_db`
+via CDC, `payments_provider` via provider assurance), not to our copy. The
+walk still stops at a trusted node - we do not traverse past the boundary -
+but the node itself is added to `in_scope`, so `NOT_LOCKED` and
+`NO_INTEGRITY_CHECK` apply to it like every other scoped node. The boundary
+is now reported as the upstream system, e.g. `trusted boundary: orders_db
+(via orders_replica)`, and `scope.json` records the same `upstream (via
+node)` form. Regression coverage: a unit test (`payments` unlocked ->
+`NOT_LOCKED`) and an integration test that drops `payments` from a copy of
+`lockdown.yml`, runs the gate, and asserts exit 1.

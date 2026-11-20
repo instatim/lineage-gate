@@ -7,6 +7,7 @@ test runs `dbt parse` against the real warehouse project.
 import json
 
 import pytest
+import yaml
 
 import lineage_gate as gate
 from common import LOCKDOWN_PATH, MANIFEST_PATH, WAREHOUSE_DIR, load_lockdown
@@ -55,9 +56,9 @@ def ids_of(manifest, kind="model"):
 
 
 def test_trusted_source_stops_the_walk():
-    """A trusted node is a boundary: recorded, not scoped, and its own parents
-    are never traversed."""
-    trusted = node("orders_replica", "seed", meta={"trusted": True})
+    """A trusted node is a boundary: the walk does not continue past it, but
+    the warehouse copy stays in scope and must still be locked + tested."""
+    trusted = node("orders_replica", "seed", meta={"trusted": True, "upstream": "orders_db"})
     upstream_of_trusted = node("orders_db_raw", "seed")
     mart = node("order_fees")
     nodes = [trusted, upstream_of_trusted, mart]
@@ -76,8 +77,27 @@ def test_trusted_source_stops_the_walk():
     scope, findings = gate.evaluate(manifest, ["order_fees", "orders_replica"])
     rep = scope["revenue_je"]
     assert rep["trusted_boundary"] == ["seed.p.orders_replica"]
+    assert "seed.p.orders_replica" in rep["in_scope"]
     assert "seed.p.orders_db_raw" not in rep["in_scope"]
     assert findings == []
+
+
+def test_trusted_node_must_be_locked_and_tested():
+    """Regression: trust belongs to the upstream system, not the warehouse
+    copy. An unlocked trusted node must fail NOT_LOCKED like anything else."""
+    trusted = node("payments", "seed", meta={"trusted": True, "upstream": "payments_provider"})
+    mart = node("order_fees")
+    manifest = make_manifest(
+        [trusted, mart, data_test("t", "model.p.order_fees"), data_test("t2", "seed.p.payments")],
+        [exposure("revenue_je", True, ["model.p.order_fees"])],
+        {
+            "exposure.p.revenue_je": ["model.p.order_fees"],
+            "model.p.order_fees": ["seed.p.payments"],
+        },
+    )
+    scope, findings = gate.evaluate(manifest, ["order_fees"])  # payments NOT locked
+    assert "seed.p.payments" in scope["revenue_je"]["in_scope"]
+    assert findings == [("NOT_LOCKED", "revenue_je", "seed.p.payments")]
 
 
 def test_untrusted_source_stays_in_scope():
@@ -178,20 +198,60 @@ def test_gate_passes_on_main(real_manifest):
             for n in scope[report]["in_scope"]
         }
 
-    assert names("revenue_je") == {"gross_revenue", "order_fees"}
-    assert names("cogs_je") == {"cogs", "item_cost", "retailer_feed"}
-    assert names("adjustments_je") == {"adjustments", "refunds_adj", "events_raw"}
+    # Trusted boundary nodes are in scope too: the warehouse copies of
+    # orders_replica, payments and order_items must be locked and tested.
+    assert names("revenue_je") == {
+        "gross_revenue", "order_fees", "orders_replica", "payments",
+    }
+    assert names("cogs_je") == {"cogs", "item_cost", "order_items", "retailer_feed"}
+    assert names("adjustments_je") == {
+        "adjustments", "refunds_adj", "orders_replica", "events_raw",
+    }
 
-    # Trusted boundary: walk stops at trusted seeds and reports where.
+    # Trusted boundary: walk stops at trusted seeds; the boundary is the
+    # upstream system, reached via the warehouse copy.
     boundary = {
-        gate._display_name(n, gate._lookup(real_manifest, n))
+        gate._boundary_label(n, gate._lookup(real_manifest, n))
         for rep in scope.values()
         for n in rep["trusted_boundary"]
     }
-    assert boundary == {"orders_replica", "payments", "order_items"}
+    assert boundary == {
+        "orders_db (via orders_replica)",
+        "payments_provider (via payments)",
+        "orders_db (via order_items)",
+    }
 
     # growth_dashboard lineage must not appear anywhere.
     all_scoped = {n for rep in scope.values() for n in rep["in_scope"]}
     assert not {"growth_kpis", "growth_metrics", "experiments", "ml_features"} & {
         gate._display_name(n, gate._lookup(real_manifest, n)) for n in all_scoped
     }
+
+
+def test_dropping_payments_from_lockdown_fails(real_manifest, tmp_path, capsys):
+    """Regression for the trust-boundary bug: dropping `payments` from
+    lockdown.yml must produce NOT_LOCKED for payments and exit 1."""
+    locked, consumed_by = load_lockdown(LOCKDOWN_PATH)
+    trimmed = [t for t in locked if t != "payments"]
+    assert len(trimmed) == len(locked) - 1
+    lockdown_path = tmp_path / "lockdown.yml"
+    lockdown_path.write_text(yaml.safe_dump({
+        "locked_tables": trimmed,
+        "consumed_by": consumed_by,
+    }))
+    scope_out = tmp_path / "scope.json"
+
+    rc = gate.main([
+        "--skip-parse",
+        "--lockdown", str(lockdown_path),
+        "--scope-out", str(scope_out),
+    ])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert any(
+        line.startswith("  NOT_LOCKED") and "payments" in line
+        for line in out.splitlines()
+    )
+    # scope.json still records the trusted boundary as upstream (via node).
+    payload = json.loads(scope_out.read_text())
+    assert "payments_provider (via payments)" in payload["revenue_je"]["trusted_boundary"]

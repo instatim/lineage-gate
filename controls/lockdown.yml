@@ -9,7 +9,8 @@
 # Warehouse relations under mandatory access lockdown. The lineage gate
 # requires every node in a key report's computed scope to appear here.
 locked_tables:
-  # Trusted-upstream base tables. Listed anyway: lockdown is the default;
+  # Trusted-upstream base tables. Trust belongs to the upstream system; the
+  # warehouse copies are in gate scope, so they MUST be listed and tested.
   # meta.trusted only decides where the lineage walk stops.
   - orders_replica      # upstream: orders_db (CDC, change-controlled)
   - payments            # upstream: payments_provider (provider assurance)
